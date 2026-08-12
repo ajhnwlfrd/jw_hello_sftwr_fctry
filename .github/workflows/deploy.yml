@@ -1,0 +1,47 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Queue deploys instead of racing them, so a fast follow-up merge can't
+# land an older build on top of a newer one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify /hello is live
+        run: |
+          url="https://jw-hello-sftwr-fctry.byjw.workers.dev/hello"
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -L -o /tmp/body -w '%{http_code}' --max-time 20 "$url" || echo 000)
+            if [ "$code" = "200" ] && grep -qi 'Hello World' /tmp/body; then
+              echo "OK: $url returned 200 with expected content"
+              exit 0
+            fi
+            echo "attempt $i: status=$code — retrying in 5s"
+            sleep 5
+          done
+          echo "FAILED: $url did not serve Hello World"
+          cat /tmp/body || true
+          exit 1
