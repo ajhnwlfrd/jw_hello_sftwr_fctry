@@ -6,6 +6,20 @@
     <title>Hello World</title>
   </head>
   <body>
-    <h1>Hello World</h1>
+    <h1><span id="hello-word">Hello</span> World</h1>
+    <button id="change-color">Change Color</button>
+    <script>
+      (function () {
+        const hello = document.getElementById("hello-word");
+        document.getElementById("change-color").addEventListener("click", function () {
+          const randomColor =
+            "#" +
+            Math.floor(Math.random() * 0xffffff)
+              .toString(16)
+              .padStart(6, "0");
+          hello.style.color = randomColor;
+        });
+      })();
+    </script>
   </body>
 </html>
